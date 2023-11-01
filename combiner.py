@@ -8,7 +8,7 @@ import sys
 This proof-of-concept random map generator for Left 4 Dead 2 (and other Hammer based maps) loads map tiles from VMF files and puts them together randomly.
 """
 SEED = 42 # This random seed affects the selection of tiles and connections. A change leads to a completely different map layout.
-NUMBER_OF_TILES = 19 # How many tiles there should be in the map.
+NUMBER_OF_TILES = 5 # How many tiles there should be in the map.
 TAIL_LENGTH = 3 # The number of portals considered to be the tail of the map. Greater values produce more dead ends.
 
 def chooseConnection(connections):
@@ -138,6 +138,7 @@ if __name__ == "__main__":
   print()
 
   print("== BEGIN MAP FILE CREATION ==")
+
   base = random.choice(starts)
   print("Chose starting tile", base.filename)
 
