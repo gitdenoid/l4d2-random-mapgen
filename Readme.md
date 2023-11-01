@@ -43,10 +43,9 @@ If you're having trouble getting the Director to recognize where the end of the 
 
 ## Current Issues
 1. The automatic navigation mesh generation does not work.
-2. Many seeds won't generate until the toilet finale. I would like the toilet finale.
-3. Doubly emphasizing the fact that most seeds won't generate a complete level, meaning you'll have to find ones that do.
-4. The generator currently aims for "true randomness" and won't account for styling/themes.
-5. Sizing is very picky; note this if you decide to create more prefabs for it to pull from.
+2. Some seeds won't generate the final tile; this is borderline unpreventable because of point 3.
+3. The generator currently aims for "true randomness" and won't account for styling/themes.
+4. Sizing is fairly picky; note this if you decide to create more prefabs for it to pull from.
 
 There's definitely more that I've missed; these are the most pressing.
 
