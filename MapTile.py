@@ -257,8 +257,6 @@ class MapTile:
       if item == newDoor:
         break
     
-    print("door to delete 1:", door)
-    
     # will error if it doesn't find the door, of course
     otherDoors.remove(door)
       
@@ -281,8 +279,6 @@ class MapTile:
           break
       if item == selfDoor:
         break
-    
-    print("door to delete 2:", door)
 
     selfDoors.remove(door)
 
@@ -309,7 +305,7 @@ class MapTile:
     zeroVector = np.array([0, 0, 0])
     for direction in list(self.doors.keys()):
       for portalSolidId in self.doors[direction]:
-        doorNodes = self.map.root.FindRecurse(lambda node : node.name == "solid" and node.properties["id"] == portalSolidId)
+        doorNodes = self.map.root.FindRecurse(lambda node : node.name == "solid" and node.properties["id"] == portalSolidId[0])
         for doorNode in doorNodes:
           portal = findPortalOnSolid(doorNode)
           otherDoorNodes = self.map.root.FindRecurse(lambda node : not node == doorNode and node.name == "solid" and node.properties["id"] in self.doors[oppositeDirection(direction)] and np.array_equal(getTranslationVector(portal,findPortalOnSolid(node)),zeroVector))
@@ -323,9 +319,10 @@ class MapTile:
     self.detectLoops()
     # TODO: sometimes not all remaining doors are removed
     removed = 0
+
     for direction in list(self.doors.keys()):
       for portalSolidId in self.doors[direction]:
-        doorNodes = self.map.root.FindRecurse(lambda node : node.name == "solid" and node.properties["id"] == portalSolidId)
+        doorNodes = self.map.root.FindRecurse(lambda node : node.name == "solid" and node.properties["id"] == portalSolidId[0])
         for doorNode in doorNodes:
           portalBounds = getBounds(findPortalOnSolid(doorNode))
           removed += self.map.root.DeleteRecurse(lambda node : "classname" in node.properties and node.properties["classname"] == "prop_door_rotating" and pointNearPlane(node.origin,portalBounds))
