@@ -30,9 +30,10 @@ def euclideanDistance(x,y):
 
 def getLength(solid, direction):
   bounds = getBounds(solid)
-  if direction == "north" or "south":
+
+  if "north" in direction or "south" in direction:
     axis = 0
-  elif direction == "east" or "west":
+  elif "east" in direction or "west" in direction:
     axis = 1
   else:
     axis = 2
@@ -60,9 +61,11 @@ def findPortalOnSolid(solid):
 def getTranslationVector(mapPortal, otherMapPortal):
   """Returns the vector needed to translate the otherMapPortal so that it is moved into the position of the given mapPortal"""
   portalBounds = getBounds(mapPortal)
-  portalSize = portalBounds[1]-portalBounds[0]
+  portalSize = portalBounds[1] - portalBounds[0]
+
   otherPortalBounds = getBounds(otherMapPortal)
-  otherPortalSize = otherPortalBounds[1]-otherPortalBounds[0]
+  otherPortalSize = otherPortalBounds[1] - otherPortalBounds[0]
+
   if np.array_equal(portalSize,otherPortalSize):
     vector = portalBounds - otherPortalBounds
     return vector[0]
@@ -168,6 +171,7 @@ class MapTile:
       portal = findPortalOnSolid(solid)
       direction = self.getPortalDirection(portal)
       doors[direction].append([solid.properties["id"], getLength(portal, direction)])
+    
     self.doors = doors
     
   def findConnections(self, otherMap, tailLength=None):
@@ -175,6 +179,7 @@ class MapTile:
     If tailLength is set, this map acts as if it only had tailLength portals with the highest IDs."""
     connections = []
     doorListsByDirection = list(self.doors.items())
+
     if tailLength:
       directionByDoor = dict()
       directionByDoorLength = dict()
@@ -205,6 +210,7 @@ class MapTile:
     
   def findPortalsAndVector(self, otherMap, connection):
     """Returns all information needed to connect the otherMap to this one using the given connection"""
+
     mapPortal = self.findPortalOnSolidWithId(connection[1])
     otherMapPortal = otherMap.findPortalOnSolidWithId(connection[2])
     vector = getTranslationVector(mapPortal, otherMapPortal)
@@ -273,21 +279,23 @@ class MapTile:
       maxId = self.map.root.GetMaximumIdRecurse(0)
       otherMap.map.root.IncreaseIdRecurse(maxId)
       print("Increased IDs in other map by", maxId)
-      print("Translating other map with vector", vector, "...")
+
+      print("Translating new map with vector", vector, "...")
       otherMap.translate(vector)
-      print ("Adding the new map...")
+
+      print("Adding new map...")
       self.map.root.AddOtherMap(otherMap.map.root)
       
       for direction in list(otherMap.doors.keys()):
         for portalSolidId in otherMap.doors[direction]:
-          portalSolidId = str(int(portalSolidId)+maxId)
-          self.doors[direction].append(portalSolidId)
-      print ("Merged portal info")
+          portalSolidId[0] = str(int(portalSolidId[0]) + maxId)
+          self.doors[direction].append(portalSolidId[0])
+      print("New map merged!")
     
   def detectLoops(self):
     """Detect loops within this map (tiles positioned in such a way that the player can run in circles)"""
     print ("Detecting loops...")
-    zeroVector = np.array([0,0,0])
+    zeroVector = np.array([0, 0, 0])
     for direction in list(self.doors.keys()):
       for portalSolidId in self.doors[direction]:
         doorNodes = self.map.root.FindRecurse(lambda node : node.name == "solid" and node.properties["id"] == portalSolidId)

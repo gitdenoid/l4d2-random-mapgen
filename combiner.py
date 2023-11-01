@@ -102,7 +102,7 @@ def loadTiles(path):
         tiles.append(maptile)
         try: 
           repeat = int(basename.split('_')[0])
-          print(("Tile is", repeat, "times more likely to be chosen."))
+          print("NOTE: Tile is", repeat, "times more likely to be chosen.")
           for i in range(repeat):
             tiles.append(maptile)
         except ValueError:
