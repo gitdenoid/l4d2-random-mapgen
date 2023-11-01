@@ -11,14 +11,15 @@ SEED = 42 # This random seed affects the selection of tiles and connections. A c
 NUMBER_OF_TILES = 5 # How many tiles there should be in the map.
 TAIL_LENGTH = 3 # The number of portals considered to be the tail of the map. Greater values produce more dead ends.
 
-def chooseConection(connections):
+def chooseConnection(connections):
   """Choses a random connection out of the given ones"""
   if len(connections) > 0:
-    direction = random.choice(connections)
-    portal = random.choice(direction[1])
-    otherPortal = random.choice(direction[2])
-    connection = (direction[0],portal,otherPortal)
-    print(("Chose connection", connection))
+    choice = random.choice(connections)
+    direction = choice[0]
+    portal = choice[1]
+    otherPortal = choice[2]
+    connection = (direction, portal, otherPortal)
+    print("Chose connection:", connection)
     return connection
   else:
     return None
@@ -32,31 +33,34 @@ def collide(box, blockingBoxes):
     
 def addTile(base, tile, blockingBoxes):
   """Adds a tile by trying all possible connections"""
+
   directions = base.findConnections(tile, TAIL_LENGTH)
+  print("You you know you want it", directions)
   for direction in directions:
-    for portal in direction[1]:
-      for otherPortal in direction[2]:
-        connection = (direction[0],portal,otherPortal)
-        vectors = base.findPortalsAndVector(tile, connection)
-        vector = vectors[0]
-        translatedBounds = MapTile.translateBounds(tile.bounds,vector)
-        if not collide(translatedBounds,blockingBoxes):
-          blockingBoxes.append(translatedBounds)
-          base.append(tile, connection, vectors)
-          return True
-        else:
-          print ("Tiles collide")
+    connection = (direction[0], direction[1], direction[2])
+
+    vectors = base.findPortalsAndVector(tile, connection)
+    vector = vectors[0]
+    translatedBounds = MapTile.translateBounds(tile.bounds, vector)
+    
+    if not collide(translatedBounds, blockingBoxes):
+      blockingBoxes.append(translatedBounds)
+      base.append(tile, connection, vectors)
+      return True
+    else:
+      print ("Tiles collide")
   return False
     
 def tryAddTile(base, tile, blockingBoxes):
   """Tries to add a tile by trying one random connection"""
+
   connections = base.findConnections(tile, TAIL_LENGTH)
-  connection = chooseConection(connections)
+  connection = chooseConnection(connections)
   if connection == None:
     return False
   vectors = base.findPortalsAndVector(tile, connection)
   vector = vectors[0]
-  translatedBounds = MapTile.translateBounds(tile.bounds,vector)
+  translatedBounds = MapTile.translateBounds(tile.bounds, vector)
   if collide(translatedBounds, blockingBoxes):
     print ("Tiles collide")
     return False
@@ -68,7 +72,7 @@ def tryAddTile(base, tile, blockingBoxes):
 def selectAndTryToAddTile(base, tiles, blockingBoxes):
   """Selects a random tile and tries to add it to the map"""
   tile = random.choice(tiles)
-  print(("Chose tile",os.path.basename(tile.filename)))
+  print("Chose tile:", os.path.basename(tile.filename))
   success = tryAddTile(base, tile, blockingBoxes)
   if success and tile.getOnce():
     tiles.remove(tile)
@@ -77,6 +81,7 @@ def selectAndTryToAddTile(base, tiles, blockingBoxes):
     
 def loadTiles(path):
   """Loads all tiles from a directory"""
+  print("== LOADING MAP FILES ==")
   starts = []
   tiles = []
   finales = []
@@ -84,7 +89,7 @@ def loadTiles(path):
   for filename in listing:
     if filename[-3:] == "vmf":
       basename = os.path.basename(filename)
-      print(("Loading",basename))
+      print("Loading", basename)
       maptile = MapTile.MapTile()
       maptile.fromfile(path+filename)
       if filename[:5] == "start":
@@ -97,7 +102,7 @@ def loadTiles(path):
         tiles.append(maptile)
         try: 
           repeat = int(basename.split('_')[0])
-          print(("Tile is", repeat, "times more likely to be chosen."))
+          print("NOTE: Tile is", repeat, "times more likely to be chosen.")
           for i in range(repeat):
             tiles.append(maptile)
         except ValueError:
@@ -116,21 +121,42 @@ if __name__ == "__main__":
   else:
     filename = "./output/map-" + str(SEED) + ".vmf"
 
-  
+  mapStyle = "dev"
 
-  starts, tiles, finales = loadTiles("tiles/dev/")
+  print("+++++ L4D2 LEVEL GENERATOR +++++")
+  print("Seed:", SEED)
+  print("Tile count:", NUMBER_OF_TILES)
+  print("Max tail length:", TAIL_LENGTH)
+  print("Map Style:", mapStyle)
+  print("Outputting to", filename)
+
+  print()
+
+  tilePath = "tiles/" + mapStyle + "/"
+  starts, tiles, finales = loadTiles(tilePath)
+
+  print()
+
+  print("== BEGIN MAP FILE CREATION ==")
+
   base = random.choice(starts)
+  print("Chose starting tile", base.filename)
+
   finale = random.choice(finales)
+  print("Chose ending tile", finale.filename)
+
   tiles.sort()
   blockingBoxes = [base.bounds]
 
   tilesAdded = 0
-  for i in range(NUMBER_OF_TILES*len(tiles)):
+  print("-- TILE 1 --")
+  for i in range(NUMBER_OF_TILES * len(tiles)):
     if selectAndTryToAddTile(base, tiles, blockingBoxes):
       tilesAdded += 1
+      print("-- TILE", tilesAdded + 1, "--")
     if tilesAdded == NUMBER_OF_TILES:
       break
-  print((tilesAdded,"tiles added"))
+  print("Total tiles: ", tilesAdded)
       
   if not addTile(base, finale, blockingBoxes):
     print ("ERROR: Failed to append final \"finale\" tile.")

@@ -22,14 +22,25 @@ def oppositeDirection(direction):
     return "up"
   else:
     raise AssertionError("Unknown direction \""+direction+"\" for opposite")
-    return None
 
 # http://stackoverflow.com/questions/1401712/calculate-euclidean-distance-with-np
 def euclideanDistance(x,y):
   """Returns the euclidean distance"""
   return np.sqrt(np.sum((x-y)**2))
 
-def pointNearPlane(point,bounds):
+def getLength(solid, direction):
+  bounds = getBounds(solid)
+
+  if "north" in direction or "south" in direction:
+    axis = 0
+  elif "east" in direction or "west" in direction:
+    axis = 1
+  else:
+    axis = 2
+
+  return abs(bounds[1][axis] - bounds[0][axis])
+
+def pointNearPlane(point, bounds):
   """Checks whether a point is near a plane given by it's bounds"""
   pointDistance = euclideanDistance(bounds[0],point)
   portalSize = euclideanDistance(bounds[0],bounds[1])
@@ -47,12 +58,14 @@ def findPortalOnSolid(solid):
     return None
   return side.plane
     
-def getTranslationVector(mapPortal,otherMapPortal):
+def getTranslationVector(mapPortal, otherMapPortal):
   """Returns the vector needed to translate the otherMapPortal so that it is moved into the position of the given mapPortal"""
   portalBounds = getBounds(mapPortal)
-  portalSize = portalBounds[1]-portalBounds[0]
+  portalSize = portalBounds[1] - portalBounds[0]
+
   otherPortalBounds = getBounds(otherMapPortal)
-  otherPortalSize = otherPortalBounds[1]-otherPortalBounds[0]
+  otherPortalSize = otherPortalBounds[1] - otherPortalBounds[0]
+
   if np.array_equal(portalSize,otherPortalSize):
     vector = portalBounds - otherPortalBounds
     return vector[0]
@@ -90,7 +103,7 @@ class MapTile:
     """Empty constructor"""
     pass
     
-  def fromfile(self,filename):
+  def fromfile(self, filename):
     """Reads a map from a VMF file"""
     # TODO: make this a class method
     self.map = VMFFile()
@@ -155,7 +168,10 @@ class MapTile:
     doors = dict({'north': [], 'east': [], 'south': [], 'west': [], 'up': [], 'down': []})
     solids = self.map.root.FindRecurse(lambda node : node.name == "solid" and not np.all(findPortalOnSolid(node)) == None)
     for solid in solids:
-      doors[self.getPortalDirection(findPortalOnSolid(solid))].append(solid.properties["id"])
+      portal = findPortalOnSolid(solid)
+      direction = self.getPortalDirection(portal)
+      doors[direction].append([solid.properties["id"], getLength(portal, direction)])
+    
     self.doors = doors
     
   def findConnections(self, otherMap, tailLength=None):
@@ -163,31 +179,43 @@ class MapTile:
     If tailLength is set, this map acts as if it only had tailLength portals with the highest IDs."""
     connections = []
     doorListsByDirection = list(self.doors.items())
+
     if tailLength:
       directionByDoor = dict()
+      directionByDoorLength = dict()
       for direction, doorList in doorListsByDirection:
         for door in doorList:
-          directionByDoor[int(door)] = direction
+          directionByDoor[int(door[0])] = direction
+          directionByDoorLength[int(door[0])] = door[1]
       tailDoors = sorted(iter(list(directionByDoor.keys())),reverse=True)[:tailLength]
       doors = dict({'north': [], 'east': [], 'south': [], 'west': [], 'up': [], 'down': []})
       for door in tailDoors:
-        doors[directionByDoor[door]].append(str(door))
-      doorListsByDirection = list(doors.items())
+        doors[directionByDoor[door]].append([str(door), directionByDoorLength[door]])
+    
+    doorListsByDirection = list(doors.items())
+
     for direction, doorList in doorListsByDirection:
       if len(doorList) > 0:
-        #print "Base map has a door in direction",direction
         otherDoorList = otherMap.doors[oppositeDirection(direction)]
+        
+        # oh brother
+        # love to see that n^2 runtime
         if len(otherDoorList) > 0:
-          #print "Other map has a door in opposite direction"
-          connections.append((direction,doorList,otherDoorList))
-    print(("Have",len(connections),"possible connections"))
+          for i in range(len(doorList)):
+            for j in range(len(otherDoorList)):
+              if doorList[i][1] == otherDoorList[j][1]:
+                print("Adding Connection", (direction, doorList[i][0], otherDoorList[j][0]))
+                connections.append((direction, doorList[i][0], otherDoorList[j][0]))
+          
+    print("Total:", len(connections), "connections")
     return connections
     
   def findPortalsAndVector(self, otherMap, connection):
     """Returns all information needed to connect the otherMap to this one using the given connection"""
+
     mapPortal = self.findPortalOnSolidWithId(connection[1])
     otherMapPortal = otherMap.findPortalOnSolidWithId(connection[2])
-    vector = getTranslationVector(mapPortal,otherMapPortal)
+    vector = getTranslationVector(mapPortal, otherMapPortal)
     return (vector, mapPortal, otherMapPortal)
     
   def append(self, otherMap, connection, vectors):
@@ -196,7 +224,7 @@ class MapTile:
     otherMap = otherMap.deepcopy()
     return self.mend(otherMap, connection, vectors)
     
-  def findPortalOnSolidWithId(self,id):
+  def findPortalOnSolidWithId(self, id):
     """Finds a portal on the solid with the given ID."""
     solid = self.map.root.FindRecurse(lambda node : node.name == "solid" and node.properties["id"] == id)[0]
     portal = findPortalOnSolid(solid)
@@ -210,41 +238,66 @@ class MapTile:
     
     if not otherMap == self:
       removed = otherMap.map.root.DeleteRecurse(lambda node : "classname" in node.properties and node.properties["classname"] == "info_player_start")
-      print(("Removed",removed,"info_player_start from other map"))
+      print("Removed", removed, "info_player_start from other map")
       removed = otherMap.map.root.DeleteRecurse(lambda node : "classname" in node.properties and node.properties["classname"] == "prop_door_rotating" and pointNearPlane(node.origin,otherMapPortal))
-      print(("Removed",removed,"doors from other map"))
+      print("Removed", removed, "doors from other map")
     removed = otherMap.map.root.DeleteRecurse(lambda node : node.name == "solid" and node.properties["id"] == connection[2])
-    print(("Removed",removed,"solids from other map"))
-    otherMap.doors[oppositeDirection(connection[0])].remove(connection[2])
+    print("Removed", removed, "solids from other map")
+
+    # we gotta hunt for the fabled portalIndex
+    otherDoors = otherMap.doors[oppositeDirection(connection[0])]
+    door = None
+
+    # not the best solution, but I'm not going for optimization rn
+    for door in otherDoors:
+      for item in door:
+        if item == connection[2]:
+          continue
+    
+    # will error if it doesn't find the door, of course
+    otherDoors.remove(door)
       
     entities = self.map.root.FindRecurse(lambda node : node.name == "entity" and not node.properties["classname"] == "func_detail" and pointNearPlane(node.origin,mapPortal))
     removed = 0
     for entity in entities:
       removed += entity.DeleteRecurse(lambda node : node.name == "editor")
-    print(("Removed",removed,"editor information from remaining entities in base map"))
+    print("Removed", removed, "editor information from remaining entities in base map")
+
     removed = self.map.root.DeleteRecurse(lambda node : node.name == "solid" and node.properties["id"] == connection[1])
-    print(("Removed",removed,"solids from base map"))
-    self.doors[connection[0]].remove(connection[1])
+    print("Removed", removed, "solids from base map")
+
+    # we'll have to do the same thing again here
+    selfDoors = self.doors[connection[0]]
+    door = None
+
+    for door in selfDoors:
+      for item in door:
+        if item == connection[1]:
+          continue
+
+    selfDoors.remove(door)
 
     if not otherMap == self:
       maxId = self.map.root.GetMaximumIdRecurse(0)
       otherMap.map.root.IncreaseIdRecurse(maxId)
-      print(("Increased IDs in other map by",maxId))
-      print(("Translating other map with vector",vector,"..."))
+      print("Increased IDs in other map by", maxId)
+
+      print("Translating new map with vector", vector, "...")
       otherMap.translate(vector)
-      print ("Adding other map...")
+
+      print("Adding new map...")
       self.map.root.AddOtherMap(otherMap.map.root)
       
       for direction in list(otherMap.doors.keys()):
         for portalSolidId in otherMap.doors[direction]:
-          portalSolidId = str(int(portalSolidId)+maxId)
+          portalSolidId[0] = str(int(portalSolidId[0]) + maxId)
           self.doors[direction].append(portalSolidId)
-      print ("Merged portal info")
+      print("New map merged!")
     
   def detectLoops(self):
     """Detect loops within this map (tiles positioned in such a way that the player can run in circles)"""
     print ("Detecting loops...")
-    zeroVector = np.array([0,0,0])
+    zeroVector = np.array([0, 0, 0])
     for direction in list(self.doors.keys()):
       for portalSolidId in self.doors[direction]:
         doorNodes = self.map.root.FindRecurse(lambda node : node.name == "solid" and node.properties["id"] == portalSolidId)
@@ -267,7 +320,7 @@ class MapTile:
         for doorNode in doorNodes:
           portalBounds = getBounds(findPortalOnSolid(doorNode))
           removed += self.map.root.DeleteRecurse(lambda node : "classname" in node.properties and node.properties["classname"] == "prop_door_rotating" and pointNearPlane(node.origin,portalBounds))
-    print(("Removed",removed,"doors to close map"))
+    print("Removed", removed, "doors to close map")
       
   def generateNavMeshScript(self):
     """Generate a config file for generating the nav mesh in game."""
@@ -280,7 +333,7 @@ class MapTile:
     else:
       lines.append(["nav_clear_selected_set","setpos " + start[0].GetOrigin() + "","setang 90 0 0"])
       lines.append(["nav_begin_area","setpos " + start[1].GetOrigin() + "","setang 90 0 0"])
-      lines.append(["nav_end_area","nav_toggle_in_selected_set","mark PLAYER_START","nav_clear_selected_set","clear_attribute PLAYER_START"])
+      lines.append(["nav_end_area","nav_toggle_in_selected_set","mark PLAYER_START","nav_clear_selected_sechot","clear_attribute PLAYER_START"])
     
     finale = self.map.root.FindRecurse(lambda node : "classname" in node.properties and node.properties["classname"] == "info_null" and "targetname" in node.properties and node.properties["targetname"] == "finale")
     if not len(finale) == 2:
