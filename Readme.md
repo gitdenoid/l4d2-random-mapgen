@@ -34,6 +34,13 @@ In order to compile and play the map, you'll have to compile it in Hammer like s
 5. Open up console (Default: ~) if the map did not automatically launch. Type `map [mapname]` and press "Enter".
 6. The map will load! Be sure to look up [a L4D Navigation Mesh tutorial](https://developer.valvesoftware.com/wiki/L4D_Level_Design/Nav_Meshes) so the director/bots can navigate the map.
 
+If you're having trouble getting the Director to recognize where the end of the level is:
+1. Type `z_debug 1` in console.
+2. Go to the toilet room (or whatever your finale room is set to) and face one of the navigation squares.
+3. Type `mark FINALE` in console.
+4. Type `nav_save` in console.
+5. Restart the map by exiting and reloading the map, or type `mp_restartgame 1` and then `director_start` to restart the director.
+
 ## Current Issues
 1. The automatic navigation mesh generation does not work.
 2. Many seeds won't generate until the toilet finale. I would like the toilet finale.
