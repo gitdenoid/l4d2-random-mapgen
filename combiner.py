@@ -8,7 +8,7 @@ import sys
 This proof-of-concept random map generator for Left 4 Dead 2 (and other Hammer based maps) loads map tiles from VMF files and puts them together randomly.
 """
 SEED = 42 # This random seed affects the selection of tiles and connections. A change leads to a completely different map layout.
-NUMBER_OF_TILES = 5 # How many tiles there should be in the map.
+NUMBER_OF_TILES = 19 # How many tiles there should be in the map.
 TAIL_LENGTH = 3 # The number of portals considered to be the tail of the map. Greater values produce more dead ends.
 
 def chooseConnection(connections):
@@ -34,21 +34,21 @@ def collide(box, blockingBoxes):
 def addTile(base, tile, blockingBoxes):
   """Adds a tile by trying all possible connections"""
 
-  print("Adding tile for ", tile)
   directions = base.findConnections(tile, TAIL_LENGTH)
+  print("You you know you want it", directions)
   for direction in directions:
-    for portal in direction[1]:
-      for otherPortal in direction[2]:
-        connection = (direction[0],portal,otherPortal)
-        vectors = base.findPortalsAndVector(tile, connection)
-        vector = vectors[0]
-        translatedBounds = MapTile.translateBounds(tile.bounds,vector)
-        if not collide(translatedBounds,blockingBoxes):
-          blockingBoxes.append(translatedBounds)
-          base.append(tile, connection, vectors)
-          return True
-        else:
-          print ("Tiles collide")
+    connection = (direction[0], direction[1], direction[2])
+
+    vectors = base.findPortalsAndVector(tile, connection)
+    vector = vectors[0]
+    translatedBounds = MapTile.translateBounds(tile.bounds, vector)
+    
+    if not collide(translatedBounds, blockingBoxes):
+      blockingBoxes.append(translatedBounds)
+      base.append(tile, connection, vectors)
+      return True
+    else:
+      print ("Tiles collide")
   return False
     
 def tryAddTile(base, tile, blockingBoxes):
@@ -60,7 +60,7 @@ def tryAddTile(base, tile, blockingBoxes):
     return False
   vectors = base.findPortalsAndVector(tile, connection)
   vector = vectors[0]
-  translatedBounds = MapTile.translateBounds(tile.bounds,vector)
+  translatedBounds = MapTile.translateBounds(tile.bounds, vector)
   if collide(translatedBounds, blockingBoxes):
     print ("Tiles collide")
     return False

@@ -191,19 +191,21 @@ class MapTile:
       doors = dict({'north': [], 'east': [], 'south': [], 'west': [], 'up': [], 'down': []})
       for door in tailDoors:
         doors[directionByDoor[door]].append([str(door), directionByDoorLength[door]])
-      
-      doorListsByDirection = list(doors.items())
+    
+    doorListsByDirection = list(doors.items())
 
     for direction, doorList in doorListsByDirection:
       if len(doorList) > 0:
         otherDoorList = otherMap.doors[oppositeDirection(direction)]
-
+        
+        # oh brother
+        # love to see that n^2 runtime
         if len(otherDoorList) > 0:
-          # oh brother
           for i in range(len(doorList)):
-            for j in range(len(otherDoorList)): 
-              print("Adding Connection", (direction, doorList[i][0], otherDoorList[j][0]))
-              connections.append((direction, doorList[i][0], otherDoorList[j][0]))
+            for j in range(len(otherDoorList)):
+              if doorList[i][1] == otherDoorList[j][1]:
+                print("Adding Connection", (direction, doorList[i][0], otherDoorList[j][0]))
+                connections.append((direction, doorList[i][0], otherDoorList[j][0]))
           
     print("Total:", len(connections), "connections")
     return connections
@@ -222,7 +224,7 @@ class MapTile:
     otherMap = otherMap.deepcopy()
     return self.mend(otherMap, connection, vectors)
     
-  def findPortalOnSolidWithId(self,id):
+  def findPortalOnSolidWithId(self, id):
     """Finds a portal on the solid with the given ID."""
     solid = self.map.root.FindRecurse(lambda node : node.name == "solid" and node.properties["id"] == id)[0]
     portal = findPortalOnSolid(solid)
@@ -289,7 +291,7 @@ class MapTile:
       for direction in list(otherMap.doors.keys()):
         for portalSolidId in otherMap.doors[direction]:
           portalSolidId[0] = str(int(portalSolidId[0]) + maxId)
-          self.doors[direction].append(portalSolidId[0])
+          self.doors[direction].append(portalSolidId)
       print("New map merged!")
     
   def detectLoops(self):
