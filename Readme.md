@@ -47,6 +47,7 @@ If you're having trouble getting the Director to recognize where the end of the 
 3. Doubly emphasizing the fact that most seeds won't generate a complete level, meaning you'll have to find ones that do.
 4. The generator currently aims for "true randomness" and won't account for styling/themes.
 5. Sizing is very picky; note this if you decide to create more prefabs for it to pull from.
+6. It seems like I broke the generator's ability to delete objects that are leaking in the map.
 
 There's definitely more that I've missed; these are the most pressing.
 
