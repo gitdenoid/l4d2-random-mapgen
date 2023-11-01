@@ -38,7 +38,7 @@ If you're having trouble getting the Director to recognize where the end of the 
 1. Type `z_debug 1` in console.
 2. Go to the toilet room (or whatever your finale room is set to) and face one of the navigation squares.
 3. Type `mark FINALE` in console.
-4. Type `nav_save` in console.
+4. Type `nav_save` in console. If the console outputs that you need to run `nav_analyze`, do so.
 5. Restart the map by exiting and reloading the map, or type `mp_restartgame 1` and then `director_start` to restart the director.
 
 ## Current Issues
