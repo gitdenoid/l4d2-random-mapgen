@@ -21,7 +21,7 @@ def oppositeDirection(direction):
   elif direction == "down":
     return "up"
   else:
-    raise AssertionError("Unknown direction \""+direction+"\" for opposite")
+    raise AssertionError("Unknown direction \"" + direction + "\" for opposite")
 
 # http://stackoverflow.com/questions/1401712/calculate-euclidean-distance-with-np
 def euclideanDistance(x,y):
@@ -212,7 +212,6 @@ class MapTile:
     
   def findPortalsAndVector(self, otherMap, connection):
     """Returns all information needed to connect the otherMap to this one using the given connection"""
-
     mapPortal = self.findPortalOnSolidWithId(connection[1])
     otherMapPortal = otherMap.findPortalOnSolidWithId(connection[2])
     vector = getTranslationVector(mapPortal, otherMapPortal)
@@ -226,7 +225,8 @@ class MapTile:
     
   def findPortalOnSolidWithId(self, id):
     """Finds a portal on the solid with the given ID."""
-    solid = self.map.root.FindRecurse(lambda node : node.name == "solid" and node.properties["id"] == id)[0]
+    object = self.map.root.FindRecurse(lambda node : node.name == "solid" and node.properties["id"] == id)
+    solid = object[0]
     portal = findPortalOnSolid(solid)
     if np.all(portal) == None:
       print(("ERROR: Every portal must have a solid having a side with the material "+ OUTSIDE_MATERIAL +" marking the outside"))
@@ -235,24 +235,27 @@ class MapTile:
   def mend(self, otherMap, connection, vectors):
     """Mends the otherMap with this one using the given connection, portals and translation vector."""
     vector, mapPortal, otherMapPortal = vectors
+    (direction, selfDoor, newDoor) = connection
     
     if not otherMap == self:
       removed = otherMap.map.root.DeleteRecurse(lambda node : "classname" in node.properties and node.properties["classname"] == "info_player_start")
       print("Removed", removed, "info_player_start from other map")
       removed = otherMap.map.root.DeleteRecurse(lambda node : "classname" in node.properties and node.properties["classname"] == "prop_door_rotating" and pointNearPlane(node.origin,otherMapPortal))
       print("Removed", removed, "doors from other map")
-    removed = otherMap.map.root.DeleteRecurse(lambda node : node.name == "solid" and node.properties["id"] == connection[2])
+    removed = otherMap.map.root.DeleteRecurse(lambda node : node.name == "solid" and node.properties["id"] == newDoor)
     print("Removed", removed, "solids from other map")
 
     # we gotta hunt for the fabled portalIndex
-    otherDoors = otherMap.doors[oppositeDirection(connection[0])]
-    door = None
+    otherDoors = otherMap.doors[oppositeDirection(direction)]
+    door = -1
 
     # not the best solution, but I'm not going for optimization rn
     for door in otherDoors:
       for item in door:
-        if item == connection[2]:
-          continue
+        if item == newDoor:
+          break
+      if item == newDoor:
+        break
     
     # will error if it doesn't find the door, of course
     otherDoors.remove(door)
@@ -263,24 +266,26 @@ class MapTile:
       removed += entity.DeleteRecurse(lambda node : node.name == "editor")
     print("Removed", removed, "editor information from remaining entities in base map")
 
-    removed = self.map.root.DeleteRecurse(lambda node : node.name == "solid" and node.properties["id"] == connection[1])
+    removed = self.map.root.DeleteRecurse(lambda node : node.name == "solid" and node.properties["id"] == selfDoor)
     print("Removed", removed, "solids from base map")
 
     # we'll have to do the same thing again here
-    selfDoors = self.doors[connection[0]]
-    door = None
+    selfDoors = self.doors[direction]
+    door = -1
 
     for door in selfDoors:
       for item in door:
-        if item == connection[1]:
-          continue
+        if item == selfDoor:
+          break
+      if item == selfDoor:
+        break
 
     selfDoors.remove(door)
 
     if not otherMap == self:
       maxId = self.map.root.GetMaximumIdRecurse(0)
       otherMap.map.root.IncreaseIdRecurse(maxId)
-      print("Increased IDs in other map by", maxId)
+      print("Increased IDs in new map by", maxId)
 
       print("Translating new map with vector", vector, "...")
       otherMap.translate(vector)
@@ -300,7 +305,7 @@ class MapTile:
     zeroVector = np.array([0, 0, 0])
     for direction in list(self.doors.keys()):
       for portalSolidId in self.doors[direction]:
-        doorNodes = self.map.root.FindRecurse(lambda node : node.name == "solid" and node.properties["id"] == portalSolidId)
+        doorNodes = self.map.root.FindRecurse(lambda node : node.name == "solid" and node.properties["id"] == portalSolidId[0])
         for doorNode in doorNodes:
           portal = findPortalOnSolid(doorNode)
           otherDoorNodes = self.map.root.FindRecurse(lambda node : not node == doorNode and node.name == "solid" and node.properties["id"] in self.doors[oppositeDirection(direction)] and np.array_equal(getTranslationVector(portal,findPortalOnSolid(node)),zeroVector))
@@ -314,9 +319,10 @@ class MapTile:
     self.detectLoops()
     # TODO: sometimes not all remaining doors are removed
     removed = 0
+
     for direction in list(self.doors.keys()):
       for portalSolidId in self.doors[direction]:
-        doorNodes = self.map.root.FindRecurse(lambda node : node.name == "solid" and node.properties["id"] == portalSolidId)
+        doorNodes = self.map.root.FindRecurse(lambda node : node.name == "solid" and node.properties["id"] == portalSolidId[0])
         for doorNode in doorNodes:
           portalBounds = getBounds(findPortalOnSolid(doorNode))
           removed += self.map.root.DeleteRecurse(lambda node : "classname" in node.properties and node.properties["classname"] == "prop_door_rotating" and pointNearPlane(node.origin,portalBounds))

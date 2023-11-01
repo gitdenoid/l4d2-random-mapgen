@@ -8,8 +8,8 @@ import sys
 This proof-of-concept random map generator for Left 4 Dead 2 (and other Hammer based maps) loads map tiles from VMF files and puts them together randomly.
 """
 SEED = 42 # This random seed affects the selection of tiles and connections. A change leads to a completely different map layout.
-NUMBER_OF_TILES = 5 # How many tiles there should be in the map.
-TAIL_LENGTH = 3 # The number of portals considered to be the tail of the map. Greater values produce more dead ends.
+NUMBER_OF_TILES = 150 # How many tiles there should be in the map.
+TAIL_LENGTH = 8 # The number of portals considered to be the tail of the map. Greater values produce more dead ends.
 
 def chooseConnection(connections):
   """Choses a random connection out of the given ones"""
@@ -22,8 +22,7 @@ def chooseConnection(connections):
     print("Chose connection:", connection)
     return connection
   else:
-    return None
-
+    return None  
 def collide(box, blockingBoxes):
   """Checks whether two bounding boxes collide"""
   for blockingBox in blockingBoxes:
@@ -35,7 +34,6 @@ def addTile(base, tile, blockingBoxes):
   """Adds a tile by trying all possible connections"""
 
   directions = base.findConnections(tile, TAIL_LENGTH)
-  print("You you know you want it", directions)
   for direction in directions:
     connection = (direction[0], direction[1], direction[2])
 
@@ -156,10 +154,12 @@ if __name__ == "__main__":
       print("-- TILE", tilesAdded + 1, "--")
     if tilesAdded == NUMBER_OF_TILES:
       break
-  print("Total tiles: ", tilesAdded)
-      
+  
+  addedFinale = True
+
   if not addTile(base, finale, blockingBoxes):
     print ("ERROR: Failed to append final \"finale\" tile.")
+    addedFinale = False
   else:
     pass
     
@@ -172,3 +172,10 @@ if __name__ == "__main__":
   file = open("../../left4dead2/cfg/combined.cfg","w")
   file.write(base.generateNavMeshScript())
   file.close()
+
+  print()
+
+  print("== RESULTS ==")
+  print("Successfully created map", filename, "with seed", SEED)
+  print("Total tiles:", tilesAdded)
+  print("Finale added:", addedFinale)
