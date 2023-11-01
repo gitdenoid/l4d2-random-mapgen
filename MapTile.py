@@ -236,25 +236,46 @@ class MapTile:
     removed = otherMap.map.root.DeleteRecurse(lambda node : node.name == "solid" and node.properties["id"] == connection[2])
     print("Removed", removed, "solids from other map")
 
-    print("It's about to crash; here's connection:", connection)
-    otherMap.doors[oppositeDirection(connection[0])].remove(connection[2])
+    # we gotta hunt for the fabled portalIndex
+    otherDoors = otherMap.doors[oppositeDirection(connection[0])]
+    door = None
+
+    # not the best solution, but I'm not going for optimization rn
+    for door in otherDoors:
+      for item in door:
+        if item == connection[2]:
+          continue
+    
+    # will error if it doesn't find the door, of course
+    otherDoors.remove(door)
       
     entities = self.map.root.FindRecurse(lambda node : node.name == "entity" and not node.properties["classname"] == "func_detail" and pointNearPlane(node.origin,mapPortal))
     removed = 0
     for entity in entities:
       removed += entity.DeleteRecurse(lambda node : node.name == "editor")
     print("Removed", removed, "editor information from remaining entities in base map")
+
     removed = self.map.root.DeleteRecurse(lambda node : node.name == "solid" and node.properties["id"] == connection[1])
     print("Removed", removed, "solids from base map")
-    self.doors[connection[0]].remove(connection[1])
+
+    # we'll have to do the same thing again here
+    selfDoors = self.doors[connection[0]]
+    door = None
+
+    for door in selfDoors:
+      for item in door:
+        if item == connection[1]:
+          continue
+
+    selfDoors.remove(door)
 
     if not otherMap == self:
       maxId = self.map.root.GetMaximumIdRecurse(0)
       otherMap.map.root.IncreaseIdRecurse(maxId)
-      print(("Increased IDs in other map by",maxId))
-      print(("Translating other map with vector",vector,"..."))
+      print("Increased IDs in other map by", maxId)
+      print("Translating other map with vector", vector, "...")
       otherMap.translate(vector)
-      print ("Adding other map...")
+      print ("Adding the new map...")
       self.map.root.AddOtherMap(otherMap.map.root)
       
       for direction in list(otherMap.doors.keys()):
